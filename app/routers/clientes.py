@@ -1,33 +1,35 @@
 from fastapi import APIRouter, HTTPException
-from app.database import get_connection
-from app.schemas import ClienteCreate
+from pymysql.err import IntegrityError
+from app.database import conectar
+from app.schemas import ClienteCrear, ClienteRespuesta
 
 router = APIRouter(prefix='/clientes', tags=['Clientes'])
 
-@router.get('/')
-def listar_clientes():
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute('SELECT * FROM clientes')
+@router.get('', response_model=list[ClienteRespuesta])
+def listar():
+    with conectar() as db:
+        with db.cursor() as cur:
+            cur.execute('SELECT * FROM clientes ORDER BY id')
             return cur.fetchall()
-    finally:
-        conn.close()
 
-@router.post('/', status_code=201)
-def crear_cliente(cliente: ClienteCreate):
-    conn = get_connection()
+@router.get('/{cliente_id}', response_model=ClienteRespuesta)
+def obtener(cliente_id: int):
+    with conectar() as db:
+        with db.cursor() as cur:
+            cur.execute('SELECT * FROM clientes WHERE id=%s', (cliente_id,))
+            cliente = cur.fetchone()
+    if cliente is None:
+        raise HTTPException(404, 'Cliente no encontrado')
+    return cliente
+
+@router.post('', response_model=ClienteRespuesta, status_code=201)
+def crear(datos: ClienteCrear):
     try:
-        with conn.cursor() as cur:
-            # correo duplicado -> 409
-            cur.execute('SELECT id FROM clientes WHERE email = %s', (cliente.email,))
-            if cur.fetchone():
-                raise HTTPException(status_code=409, detail='El correo ya está registrado')
-            cur.execute(
-                'INSERT INTO clientes (nombre, email, telefono) VALUES (%s, %s, %s)',
-                (cliente.nombre, cliente.email, cliente.telefono),
-            )
-        conn.commit()
-        return {'id': cur.lastrowid, **cliente.model_dump()}
-    finally:
-        conn.close()
+        with conectar() as db:
+            with db.cursor() as cur:
+                cur.execute('INSERT INTO clientes (nombre,correo) VALUES (%s,%s)', (datos.nombre, str(datos.correo)))
+                nuevo_id = cur.lastrowid
+                cur.execute('SELECT * FROM clientes WHERE id=%s', (nuevo_id,))
+                return cur.fetchone()
+    except IntegrityError as exc:
+        raise HTTPException(409, 'Correo ya registrado') from exc

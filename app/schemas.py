@@ -1,11 +1,25 @@
-from pydantic import BaseModel, EmailStr, Field
+from decimal import Decimal
+from pydantic import BaseModel, Field, EmailStr
 
-class ClienteCreate(BaseModel):
-    nombre: str
-    email: EmailStr
-    telefono: str | None = None
+class ClienteCrear(BaseModel):
+    nombre: str = Field(min_length=2, max_length=100)
+    correo: EmailStr
 
-class ProductoCreate(BaseModel):
-    nombre: str
-    precio: float = Field(gt=0)  # precio negativo -> 422
+class ClienteRespuesta(ClienteCrear):
+    id: int
+
+class ProductoCrear(BaseModel):
+    nombre: str = Field(min_length=2, max_length=100)
+    precio: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     stock: int = Field(ge=0)
+
+class ProductoRespuesta(ProductoCrear):
+    id: int
+
+class ItemPedido(BaseModel):
+    producto_id: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+
+class PedidoCrear(BaseModel):
+    cliente_id: int = Field(gt=0)
+    items: list[ItemPedido] = Field(min_length=1)
