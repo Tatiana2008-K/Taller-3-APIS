@@ -136,3 +136,20 @@ def cancelar_pedido(pedido_id: int):
                     'estado': 'cancelado',
                     'productos_restaurados': len(detalles)
                 }
+
+#RETO (E) REPORTE DE VENTAS POR CLIENTE
+@router.get('/reportes/ventas-por-cliente')
+def ventas_por_cliente():
+    with conectar() as db:
+        with db.curso() as cur:
+            cur.execute(
+                '''
+                SELECT c.id, c.nombre, COUNT(p.id) AS cantidad_pedidos,
+                SUM(p.total) AS total_ventas
+                FROM clientes c
+                LEFT JOIN pedidos p ON c.id = p.cliente_id
+                GROUP BY c.id, c.nombre
+                ORDER BY total_verntas DESC
+                '''
+            )
+            return cur.fetchall()
