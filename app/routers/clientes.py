@@ -53,3 +53,57 @@ def crear(datos: ClienteCrear):
                 return cur.fetchone()
     except IntegrityError as exc:
         raise HTTPException(409, 'Correo ya registrado') from exc
+
+#RETO (C) AGREGAR PUT 
+@router.put('/{cliente_id}',response_model=ClienteRespuesta)
+def actualizar(cliente_id: int, datos: ClienteCrear):
+    try:
+        with conectar() as db:
+            with db.curso() as cur:
+                cur.execute(
+                    'SELECT * FROM clientes WHERE id=%s',
+                    (cliente_id,)
+                )
+                if cur.fetchone() is None: 
+                    raise HTTPException(404, 'Cliente no encontrado')
+                cur.execute(
+                    '''UPDATE clientes SET 
+                    nombre=%s,
+                    correo=%s
+                    WHERE id=%s
+                    ''', 
+                    (datos.nombre, str(datos.correo), cliente_id)
+                )
+                cur.execute(
+                    'SELECT * FROM clientes WHERE id=%s',
+                    (cliente_id,)
+                )
+                return cur.fetchone()
+    except IntegrityError as exc: 
+        raise HTTPException(409, 'Correo ya registrado') from exc
+
+#RETO (C) AGREGAR DELETE
+@router.delete('/{cliente_id}')
+def eliminar (cliente_id: int):
+    with conectar() as db:
+        with db.cursor() as cur:
+            cur.execute(
+                'SELECT * FROM clientes WHERE id=%s',
+                (cliente_id,)
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(404, 'Cliente no encontrado')
+            cur.execute(
+                'SELECT COUNT(*) AS total FROM pedidos WHERE cliente_id=%s',
+                (cliente_id,)
+            )
+            pedidos = cur.fetchone()
+            if pedidos['total'] > 0:
+                raise HTTPException(409, 'No se puede eliminar el cliente porque tiene pedidos')
+            cur.execute(
+                'DELETE FROM clientes WHERE id=%s',
+                (cliente_id,)
+            )
+            return {
+                'mensaje': 'Cliente eliminado correctamente'
+            }
