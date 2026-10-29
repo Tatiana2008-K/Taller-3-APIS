@@ -60,3 +60,34 @@ def detalle(pedido_id: int):
             pedido['items'] = cur.fetchall()
             return pedido
 
+#RETO (B) INCLUIR EL ESTADO DEL PEDIDO Y DOCUMENTAR ESAS TRANSICIONES
+@router.put('/{pedido_id}/estado/{nuevo_estado}')
+def cambiar_estado(pedido_id: int, nuevo_estado: str):
+    estados_validos = ['pendiente', 'confirmado', 'cancelado']
+    if nuevo_estado not in estados_validos: 
+        raise HTTPException(400, 'Estado no válido')
+    with conectar() as db:
+        with db.cursor() as cur:
+            cur.execute(
+                'SELECT estado FROM pedidos WHERE id=%s',
+                (pedido_id,)
+            )
+            pedido = cur.fetchone()
+            if pedido is None:
+                raise HTTPException(404, 'Pedido no encontrado')
+            estado_actual = pedido['estado']
+            permitidas = {
+                'pendiente': ['confirmado', 'cancelado'],
+                'confirmado': [],
+                'cancelado': []
+            }
+            if nuevo_estado not in permitidas[estado_actual]:
+                raise HTTPException(409, f'No se puede cambiar {estado_actual} a {nuevo_estado}')
+            cur.execute(
+                'UPDATE pedidos SET estado=%s WHERE id=%s', (nuevo_estado, pedido_id)
+            )
+            return {
+                'pedido_id': pedido_id,
+                'estado_anterior': estado_actual,
+                'estado_nuevo': nuevo_estado
+            }

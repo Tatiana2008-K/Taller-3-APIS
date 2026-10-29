@@ -30,9 +30,15 @@ def obtener(cliente_id: int):
 def pedidos_cliente(cliente_id: int):
     with conectar() as db:
         with db.cursor() as cur:
-            cur.execute(''
-            'SELECT p.id, p.fecha, p.estado, p.total FROM pedidos p INNER JOIN clientes c ON p.cliente_id = c.id WHERE c.id = %s ORDER BY p.fecha', (cliente_id))
-
+            cur.execute( '''
+            SELECT p.id, p.fecha, p.estado, p.total 
+            FROM pedidos p 
+            INNER JOIN clientes c ON p.cliente_id = c.id 
+            WHERE c.id = %s 
+            ORDER BY p.fecha
+            ''',
+            (cliente_id,)
+            )
             pedidos = cur.fetchall()
             return pedidos
         

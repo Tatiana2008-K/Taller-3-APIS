@@ -1,6 +1,6 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field, EmailStr
-from datetime import date
+from datetime import datetime
 
 class ClienteCrear(BaseModel):
     nombre: str = Field(min_length=2, max_length=100)
@@ -27,6 +27,6 @@ class PedidoCrear(BaseModel):
 
 class PedidoCliente(BaseModel):
     id: int
-    fecha: date
+    fecha: datetime
     estado: str
     total: Decimal
