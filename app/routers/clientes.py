@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pymysql.err import IntegrityError
 #importar la funcion 
 from app.database import conectar
-from app.schemas import ClienteCrear, ClienteRespuesta
+from app.schemas import ClienteCrear, ClienteRespuesta, PedidoCliente
 
 router = APIRouter(prefix='/clientes', tags=['Clientes'])
 
@@ -25,6 +25,17 @@ def obtener(cliente_id: int):
         raise HTTPException(404, 'Cliente no encontrado')
     return cliente
 
+#RETO (A) = IMPLEMENTAR EL GET PARA VER TODOS LOS PEDISO Y ORDENADOS POR FECHA
+@router.get('/{cliente_id}/pedidos', response_model=list[PedidoCliente])
+def pedidos_cliente(cliente_id: int):
+    with conectar() as db:
+        with db.cursor() as cur:
+            cur.execute(''
+            'SELECT p.id, p.fecha, p.estado, p.total FROM pedidos p INNER JOIN clientes c ON p.cliente_id = c.id WHERE c.id = %s ORDER BY p.fecha', (cliente_id))
+
+            pedidos = cur.fetchall()
+            return pedidos
+        
 @router.post('', response_model=ClienteRespuesta, status_code=201)
 def crear(datos: ClienteCrear):
     try:

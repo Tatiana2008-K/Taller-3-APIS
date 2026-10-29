@@ -7,6 +7,8 @@ router = APIRouter(prefix='/pedidos', tags=['Pedidos'])
 
 @router.post('', status_code=201)
 def crear(datos: PedidoCrear):
+    #Una transacción atómica pedido + detalle + descuento de stock
+    #SELECT FOR UPDATE bloquea las filas involucradas hasta finalizar
     if len({i.producto_id for i in datos.items}) != len(datos.items):
         raise HTTPException(422, 'No repita el mismo producto en un pedido')
     with conectar() as db:
@@ -14,6 +16,7 @@ def crear(datos: PedidoCrear):
             cur.execute('SELECT id FROM clientes WHERE id=%s', (datos.cliente_id,))
             if cur.fetchone() is None:
                 raise HTTPException(404, 'Cliente no encontrado')
+            #Bloqueo en orden estable para dismuir conflictos concurrentes
             items = sorted(datos.items, key=lambda x: x.producto_id)
             detalles = []
             total = Decimal('0.00')
@@ -32,8 +35,8 @@ def crear(datos: PedidoCrear):
             for producto_id, cantidad, precio, subtotal in detalles:
                 cur.execute('INSERT INTO detalle_pedidos (pedido_id,producto_id,cantidad,precio_unitario,subtotal) VALUES (%s,%s,%s,%s,%s)', (pedido_id, producto_id, cantidad, precio, subtotal))
                 cur.execute('UPDATE productos SET stock=stock-%s WHERE id=%s', (cantidad, producto_id))
-            return {'id': pedido_id, 'cliente_id': datos.cliente_id, 'estado': 'confirmado', 'total': str(total), 'items': len(detalles)}
-
+            return {'id': pedido_id, 'cliente_id': datos.cliente_id, 'estado': 'pendiente', 'total': str(total), 'items': len(detalles)}
+                
 @router.get('')
 def listar():
     with conectar() as db:
@@ -56,3 +59,4 @@ def detalle(pedido_id: int):
                 WHERE d.pedido_id=%s ORDER BY d.id''', (pedido_id,))
             pedido['items'] = cur.fetchall()
             return pedido
+
