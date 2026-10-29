@@ -91,3 +91,48 @@ def cambiar_estado(pedido_id: int, nuevo_estado: str):
                 'estado_anterior': estado_actual,
                 'estado_nuevo': nuevo_estado
             }
+
+#RETO (D) IMPLEMENTAR EL POST
+@router.post('/{pedido_id}/cancelar')
+def cancelar_pedido(pedido_id: int):
+    with conectar() as db:
+        with db.curso() as cur:
+            cur.execute(
+                'SELECT id, estado FROM pedidos WHERE id=%s FOR UPDATE',
+                (pedido_id,)
+            )
+            pedido = cur.fetchone()
+            if pedido is None:
+                raise HTTPException(404, 'Pedido no encontrado')
+            if pedido['estado'] == 'cancelado':
+                raise HTTPException(409, 'El pedido ya está cancelado')
+            cur.execute( 
+                '''
+                SELECT producto_id, cantidad 
+                FROM detalle_pedidos WHERE pedido_id=%s
+                ''',
+                (pedido_id,)
+            )
+            detalles = cur.fetchall()
+            for item in detalles:
+                cur.execute(
+                    '''
+                    UPDATE productos
+                    SET stock = stock + %s
+                    WHERE id = %s
+                    ''',
+                    (item['cantidad'], item['producto_id'])
+                )
+                cur.execute(
+                    '''
+                    UPDATE pedidos
+                    SET estado = %s
+                    WHERE id = %s
+                    ''',
+                    ('cancelado', pedido_id)
+                )
+                return {
+                    'pedido_id': pedido_id,
+                    'estado': 'cancelado',
+                    'productos_restaurados': len(detalles)
+                }
