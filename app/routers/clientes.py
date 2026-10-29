@@ -1,5 +1,8 @@
+#importa apirouter oara crear rutas agrupadas, http es poara manejar errores HTTP
 from fastapi import APIRouter, HTTPException
+#importar la excepcion que se genra cuando se viola, una restriccion de integridad en MySQL
 from pymysql.err import IntegrityError
+#importar la funcion 
 from app.database import conectar
 from app.schemas import ClienteCrear, ClienteRespuesta
 
